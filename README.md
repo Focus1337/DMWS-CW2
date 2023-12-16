@@ -2,13 +2,23 @@
 
 ## Технологии
 
-Транспортный слой: `Apache Kafka`
+Транспортный слой: `Apache Pulsar`
 
 Хранилище для данных реального времени: `Apache Cassandra`
 
 Холодное хранилище: `Apache Hadoop` и `Apache Hive`
 
 BI-инструмент: `Apache Superset`
+
+## Взаимодействие слоев
+
+* Клиент производит события
+* События направляются на различные топики, соответствующие типу события, в Apache Pulsar (транспортный слой)
+* Брокер сохраняет события в горячий слой (Apache Cassandra)
+* Т.к. в Apache Hadoop запись происходит как batch, имеется сервис Batch Service, который подписывается на топики
+  брокера, а далее записывает эти данные пачками в холодный слой (Apache Cassandra)
+* BI-инструмент (сервисный слой) направляет запросы к горячим данным (Apache Cassandra), а также к холодным (к Apache
+  Hive) для формирования дашбордов аналитики.
 
 ## Используемые события в дашбордах
 
@@ -50,22 +60,22 @@ BI-инструмент: `Apache Superset`
 | user_id    | int      |
 | product_id | int      |
 
-### Filtering
+### Sorting
 
 Фильтрация и Сортировка
 
-**Topic**: filtering
+**Topic**: sorting
 
-**Table**: filterings
+**Table**: sortings
 
-| Поле        | Тип      |
-|-------------|----------|
-| filter_time | datetime |
-| user_id     | int      |
-| price_min   | double?  |
-| price_max   | double?  |
-| rating_min  | double?  |
-| rating_max  | double?  |
+| Поле       | Тип      |
+|------------|----------|
+| sort_time  | datetime |
+| user_id    | int      |
+| price_min  | double?  |
+| price_max  | double?  |
+| rating_min | double?  |
+| rating_max | double?  |
 
 ### CartAdd
 
@@ -112,20 +122,20 @@ BI-инструмент: `Apache Superset`
 | review_id     | int      |
 | review_rating | int      |
 
-### PromoUsage
+### CouponUse
 
 Использование Промокодов или Купонов
 
-**Topic**: promo-usage
+**Topic**: coupon-use
 
-**Table**: promo_usages
+**Table**: coupon_use
 
-| Поле       | Тип      |
-|------------|----------|
-| usage_time | datetime |
-| user_id    | int      |
-| coupon_id  | int      |
-| order_id   | int      |
+| Поле      | Тип      |
+|-----------|----------|
+| use_time  | datetime |
+| user_id   | int      |
+| coupon_id | int      |
+| order_id  | int      |
 
 ### CategoryView
 
@@ -141,5 +151,3 @@ BI-инструмент: `Apache Superset`
 | user_id            | int      |
 | category_id        | int      |
 | parent_category_id | int?     |
-
-
