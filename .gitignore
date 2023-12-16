@@ -1,0 +1,6 @@
+.idea
+hdfs
+metastore-postgresql
+.vscode
+data
+__pycache__
