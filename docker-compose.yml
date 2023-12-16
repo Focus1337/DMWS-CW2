@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  pulsar-init:
+    image: apachepulsar/pulsar-all:latest
+    command: /setup.sh
+    environment:
+      PULSAR_HOST: 'http://pulsar:8080'
+    volumes:
+      - ./pulsar-init.sh:/setup.sh
+    depends_on:
+      - pulsar
+
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra
+    ports:
+      - 9042:9042
+    volumes:
+      - ./data/cassandra:/var/lib/cassandra
+
+  postgres:
+    image: postgres:14.5
+    environment:
+      POSTGRES_DB: "pulsar"
+      POSTGRES_USER: "user"
+      POSTGRES_PASSWORD: "pass"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    ports:
+      - "5432:5432"
