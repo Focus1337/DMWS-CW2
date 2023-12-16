@@ -1,85 +1,57 @@
-# https://pulsar.apache.org/docs/3.1.x/client-libraries-python-use/
+#!/usr/bin/env sh
 
-import pulsar
-from events import (
-    CouponUseEvent,
-    SupportCallEvent,
-    RefundEvent,
-    ProductViewEvent,
-    RecommendationViewEvent,
-)
-from pulsar.schema import AvroSchema
-import random
-import time
-from datetime import datetime
+HOST="${PULSAR_HOST:-http://broker:8080}"
 
-client = pulsar.Client("pulsar://localhost:6650")
+echo "Использую хост $HOST"
 
-def now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+echo "Проверяю соединение к хосту $HOST"
 
-def random_user():
-    return random.randint(1, 10000)
+WaitPulsarStartup()
+{
+    curl "$HOST" >/dev/null 2>/dev/null
+    RESULT=$?
+    until [ $RESULT -eq 0 ];
+    do
+        echo "Сервис еще недоступен"
+        sleep 10
+        echo "Делаю повторный запрос"
+        curl "$HOST" >/dev/null 2>/dev/null
+        RESULT=$?
+    done
+}
 
+WaitPulsarStartup
 
-try:
-    CouponUseEvent_producer = client.create_producer(
-        "CouponUseEvent-topic", schema=AvroSchema(CouponUseEvent)
-    )
-    SupportCallEvent_producer = client.create_producer(
-        "SupportCallEvent-topic", schema=AvroSchema(CouponUseEvent)
-    )
-    RefundEvent_producer = client.create_producer(
-        "RefundEvent-topic", schema=AvroSchema(CouponUseEvent)
-    )
-    ProductViewEvent_producer = client.create_producer(
-        "ProductViewEvent-topic", schema=AvroSchema(CouponUseEvent)
-    )
-    RecommendationViewEvent_producer = client.create_producer(
-        "RecommendationViewEvent-topic", schema=AvroSchema(CouponUseEvent)
-    )
-    # ...
-    id = 0
-    while True:
-        id += 1
-        random_number = random.randint(1, 1)
-        if random_number == 1:
-            producer = CouponUseEvent_producer
-            event = CouponUseEvent(
-                coupon_id=random.randint(1, 10),
-                user_id=random_user(),
-                datetime=now(),
-            )
-        if random_number == 2:
-            producer = SupportCallEvent_producer
-            event = SupportCallEvent(
-                user_id=random_user(),
-                datetime=now(),
-            )
-        if random_number == 3:
-            producer = RefundEvent_producer
-            event = RefundEvent(
-                seller_id=random.randint(1, 50),
-                user_id=random_user(),
-                datetime=now(),
-            )
-        if random_number == 4:
-            producer = ProductViewEvent_producer
-            event = ProductViewEvent(
-                product_id=random.randint(1, 100),
-                user_id=random_user(),
-                datetime=now(),
-            )
-        if random_number == 5:
-            producer = RecommendationViewEvent_producer
-            event = RecommendationViewEvent(
-                user_id=random_user(),
-                datetime=now(),
-            )
+# Создаем топики для работы
+for topic in product-view sorting cart-add cart-remove review-view coupon-use category-view
+do
+  echo "Создаю топик $topic"
+  /pulsar/bin/pulsar-admin --admin-url "$HOST" topics create "public/default/$topic"
+done
 
-        print("producing " + event)
-        producer.send(event)
-        time.sleep(1)  # ждем секунду
+echo "Топики созданы"
 
-finally:
-    client.close()
+# Создаем коннекторы для каждого топика
+for topic in product-view sorting cart-add cart-remove review-view coupon-use category-view
+do
+  TABLE_NAME=${topic%%-*}s
+  TOPIC=$topic
+  echo "configs:
+    roots: "localhost:9042"
+    keyspace: "pulsar_test_keyspace"
+    columnFamily: "pulsar_test_table"
+    keyname: "key"
+    columnName: "col"" > /tmp/connector.yaml
+  echo $TABLE_NAME
+  echo "Создаю коннектор для $TOPIC"
+  /pulsar/bin/pulsar-admin --admin-url "$HOST" sinks create \
+    --tenant public \
+    --namespace default \
+    --name cassandra-$TOPIC \
+    --sink-type cassandra \
+    --sink-config-file /tmp/connector.yaml \
+    --inputs $TOPIC
+done
+
+# Удаляем созданный конфиг файл
+rm /tmp/connector.yaml

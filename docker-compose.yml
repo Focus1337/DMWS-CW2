@@ -1,30 +1,118 @@
-version: '3'
+version: '3.7'
 
 services:
+  clickhouse:
+    image: bitnami/clickhouse:latest
+    volumes:
+      - clickhouse-volume:/bitnami/clickhouse
+      - ./src/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - '8123:8123'
+    environment:
+      ALLOW_EMPTY_PASSWORD: 'yes'
+
+  pulsar:
+    image: apachepulsar/pulsar-all:latest
+    ports:
+      - '8080:8080'
+      - '6650:6650'
+    command: bin/pulsar standalone
+    environment:
+      clusterName: 'cluster-a'
+      managedLedgerDefaultEnsembleSize: '1'
+      managedLedgerDefaultWriteQuorum: '1'
+      managedLedgerDefaultAckQuorum: '1'
+
   pulsar-init:
     image: apachepulsar/pulsar-all:latest
-    command: /setup.sh
+    command: /pulsar-init.sh
     environment:
       PULSAR_HOST: 'http://pulsar:8080'
     volumes:
-      - ./pulsar-init.sh:/setup.sh
+      - ./src/pulsar-init.sh:/pulsar-init.sh
     depends_on:
       - pulsar
 
-  cassandra:
-    image: cassandra:latest
-    container_name: cassandra
-    ports:
-      - 9042:9042
-    volumes:
-      - ./data/cassandra:/var/lib/cassandra
-
-  postgres:
-    image: postgres:14.5
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     environment:
-      POSTGRES_DB: "pulsar"
-      POSTGRES_USER: "user"
-      POSTGRES_PASSWORD: "pass"
-      PGDATA: "/var/lib/postgresql/data/pgdata"
+      CLUSTER_NAME: 'test'
     ports:
-      - "5432:5432"
+      - '9870:9870'
+    env_file:
+      - ./src/hadoop.env
+    volumes:
+      - namenode-volume:/hadoop/dfs/name
+
+  batch_saver:
+    build:
+      context: src
+      dockerfile: BatchSaverDockerfile
+    environment:
+      MAX_FILE_SIZE: '1024'  # 1Кб для тестов
+      HDFS_URL: 'http://namenode:9870'
+    volumes:
+      - batch_saver_files-volume:/tmp
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    volumes:
+      - datanode-volume:/hadoop/dfs/data
+    env_file:
+      - ./src/hadoop.env
+    depends_on:
+      - namenode
+
+  resource-manager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    env_file:
+      - ./src/hadoop.env
+    depends_on:
+      - namenode
+      - datanode
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    env_file:
+      - ./src/hadoop.env
+    depends_on:
+      - namenode
+      - datanode
+      - resource-manager
+
+  history-server:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    volumes:
+      - history-server-volume:/hadoop/yarn/timeline
+    env_file:
+      - ./src/hadoop.env
+    depends_on:
+      - namenode
+      - datanode
+      - resource-manager
+
+  hive:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    env_file:
+      - ./src/hive.env
+    ports:
+      - '10000:10000'
+      - '10002:10002'
+
+  metastore:
+    image: 'bde2020/hive:2.3.2-postgresql-metastore'
+    command: '/opt/hive/bin/hive --service metastore'
+    ports:
+      - "9083:9083"
+    env_file:
+      - ./src/hive.env
+
+  hive-metastore-postgresql:
+    image: 'bde2020/hive-metastore-postgresql:2.3.0'
+
+volumes:
+  clickhouse-volume: {}
+  namenode-volume: {}
+  datanode-volume: {}
+  history-server-volume: {}
+  batch_saver_files-volume: {}

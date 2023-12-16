@@ -110,7 +110,7 @@ try:
                 parent_category_id=random.randint(1, 10)
             )
 
-        print("producing " + event)
+        print("producing " + str(random_number))
         producer.send(event)
         time.sleep(1)
 finally:
