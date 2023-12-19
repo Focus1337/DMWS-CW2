@@ -55,14 +55,14 @@ try:
         if random_number == 1:
             producer = product_view_producer
             event = ProductViewEvent(
-                view_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 product_id=random_product(),
             )
         if random_number == 2:
             producer = sorting_producer
             event = SortingEvent(
-                sort_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 price_min=random.randint(0, 1),
                 price_max=random.randint(0, 1),
@@ -72,7 +72,7 @@ try:
         if random_number == 3:
             producer = cart_add_producer
             event = CartAddEvent(
-                add_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 product_id = random_product(),
                 quantity = random.randint(1, 5)
@@ -80,7 +80,7 @@ try:
         if random_number == 4:
             producer = cart_remove_producer
             event = CartRemoveEvent(
-                remove_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 product_id = random_product(),
                 quantity = random.randint(1, 5)
@@ -88,7 +88,7 @@ try:
         if random_number == 5:
             producer = review_view_producer
             event = ReviewViewEvent(
-                view_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 review_id=random.randint(1, 50),
                 review_rating=random_review_rating()
@@ -96,7 +96,7 @@ try:
         if random_number == 6:
             producer = coupon_use_producer
             event = CouponUseEvent(
-                use_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 coupon_id=random.randint(1, 10),
                 order_id=random_user()
@@ -104,7 +104,7 @@ try:
         if random_number == 7:
             producer = category_view_producer
             event = CategoryViewEvent(
-                view_time=now(),
+                timestamp=now(),
                 user_id=random_user(),
                 category_id=random.randint(1, 10),
                 parent_category_id=random.randint(1, 10)

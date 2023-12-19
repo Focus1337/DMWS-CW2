@@ -44,7 +44,7 @@ def process_message(message: pulsar.Message, hdfs_client: hdfs.Client, logger: l
     csv_row = cls.serialize_csv(message.value())
 
     # 2. Записываем запись в CSV файл
-    csv_path = f'/tmp/{cls.filename()}'
+    csv_path = f'C:/Users/Focus/Desktop/dwms-cw/src/python/tmp/{cls.filename()}'
     try:
         with open(csv_path, 'a') as file:
             file.write(csv_row)
@@ -108,7 +108,7 @@ class BaseRecord(Record):
 
     @classmethod
     def get_schema(cls) -> pulsar.schema.Schema:
-        return pulsar.schema.JsonSchema(cls)
+        return pulsar.schema.AvroSchema(cls)
 
     @classmethod
     @abstractmethod
@@ -146,7 +146,7 @@ class BaseRecord(Record):
 
 
 class ProductViewEvent(BaseRecord):
-    view_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     product_id = Integer(required=True)
 
@@ -165,7 +165,7 @@ class ProductViewEvent(BaseRecord):
         return obj
 
 class SortingEvent(BaseRecord):
-    sort_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     price_min = Integer()
     price_max = Integer()
@@ -193,7 +193,7 @@ class SortingEvent(BaseRecord):
         return obj
 
 class CartAddEvent(BaseRecord):
-    add_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     product_id = Integer(required=True)
     quantity = Integer(required=True)
@@ -205,17 +205,17 @@ class CartAddEvent(BaseRecord):
     @classmethod
     def create_custom_random(cls) -> 'BaseRecord':
         obj = CartAddEvent()
-        obj.item_id = faker.random.randint(0, 1000)
+        obj.product_id = faker.random.randint(0, 1000)
         return obj
 
     @classmethod
     def get_custom_fields(cls, obj):
         return [
-            obj.item_id
+            obj.product_id
         ]
 
 class CartRemoveEvent(BaseRecord):
-    remove_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     product_id = Integer(required=True)
     quantity = Integer(required=True)
@@ -227,15 +227,15 @@ class CartRemoveEvent(BaseRecord):
     @classmethod
     def create_custom_random(cls) -> 'BaseRecord':
         obj = CartRemoveEvent()
-        obj.item_id = faker.random.randint(0, 1000)
+        obj.product_id = faker.random.randint(0, 1000)
         return obj
 
     @classmethod
     def get_custom_fields(cls, obj):
-        return [obj.item_id]
+        return [obj.product_id]
 
 class ReviewViewEvent(BaseRecord):
-    view_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     review_id = Integer(required=True)
     review_rating = Integer(required=True)
@@ -256,7 +256,7 @@ class ReviewViewEvent(BaseRecord):
         return [obj.review_id]
 
 class CouponUseEvent(BaseRecord):
-    use_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     coupon_id = Integer(required=True)
     order_id = Integer(required=True)
@@ -280,7 +280,7 @@ class CouponUseEvent(BaseRecord):
         ]
 
 class CategoryViewEvent(BaseRecord):
-    view_time = String(required=True)
+    timestamp = String(required=True)
     user_id = Integer(required=True)
     category_id = Integer(required=True)
     parent_category_id = Integer()

@@ -15,27 +15,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 root_logger = logging.getLogger()
 
-try:
-    hdfs_url = 'http://localhost:9870'
-    root_logger.info('Устанавливаю адрес HDFS: %s', hdfs_url)
-except KeyError:
-    root_logger.info('Адрес HDFS не установлен в переменных окружения. Выставляю по умолчанию')
-    hdfs_url = 'http://localhost:9870'
+hdfs_url = 'http://localhost:9870'
+root_logger.info('Устанавливаю адрес HDFS: %s', hdfs_url)
 
 hdfs_client = InsecureClient(hdfs_url)
 # Чтобы одновременно несколько потоков не могли выполнить запрос
 hdfs_client_lock = Lock()
 
-
-try:
-    max_file_size_bytes = 1024
-except KeyError:
-    root_logger.info('Максимальный размер файла не передан. Выставляю в 1 Мб')
-    max_file_size_bytes = 1024 * 1024  # 1Мб
-except Exception as e:
-    root_logger.warning('Ошибка при получении значения макс. размера файла', exc_info=e)
-    exit(1)
-
+max_file_size_bytes = 1024 * 1024
 
 def run_consumer(record_type: Type[BaseRecord], client: pulsar.Client):
     logger = logging.getLogger(f'Consumer({record_type.topic()})')
