@@ -5,7 +5,6 @@ services:
     image: bitnami/clickhouse:latest
     volumes:
       - clickhouse-volume:/bitnami/clickhouse
-      - ./src/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - '8123:8123'
     environment:
@@ -16,22 +15,29 @@ services:
     ports:
       - '8080:8080'
       - '6650:6650'
-    command: bin/pulsar standalone
+    command: '/start-pulsar.sh'
     environment:
       clusterName: 'cluster-a'
       managedLedgerDefaultEnsembleSize: '1'
       managedLedgerDefaultWriteQuorum: '1'
       managedLedgerDefaultAckQuorum: '1'
-
-  pulsar-init:
-    image: apachepulsar/pulsar-all:latest
-    command: /pulsar-init.sh
-    environment:
-      PULSAR_HOST: 'http://pulsar:8080'
+      advertisedAddress: 'localhost'
     volumes:
-      - ./src/pulsar-init.sh:/pulsar-init.sh
-    depends_on:
-      - pulsar
+      - ./src/transfer/start-pulsar.sh:/start-pulsar.sh
+      - ./src/transfer/connectors/c-cart-add.yaml:/configs/c-cart-add.yaml
+      - ./src/transfer/connectors/c-cart-remove.yaml:/configs/c-cart-remove.yaml
+      - ./src/transfer/connectors/c-category-view.yaml:/configs/c-category-view.yaml
+      - ./src/transfer/connectors/c-coupon-use.yaml:/configs/c-coupon-use.yaml
+      - ./src/transfer/connectors/c-product-view.yaml:/configs/c-product-view.yaml
+      - ./src/transfer/connectors/c-review-view.yaml:/configs/c-review-view.yaml
+      - ./src/transfer/connectors/c-sorting.yaml:/configs/c-sorting.yaml
+      - ./src/transfer/run-connectors/rc-cart-add.sh:/rc-cart-add.sh
+      - ./src/transfer/run-connectors/rc-cart-remove.sh:/rc-cart-remove.sh
+      - ./src/transfer/run-connectors/rc-category-view.sh:/rc-category-view.sh
+      - ./src/transfer/run-connectors/rc-coupon-use.sh:/rc-coupon-use.sh
+      - ./src/transfer/run-connectors/rc-product-view.sh:/rc-product-view.sh
+      - ./src/transfer/run-connectors/rc-review-view.sh:/rc-review-view.sh
+      - ./src/transfer/run-connectors/rc-sorting.sh:/rc-sorting.sh
 
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
@@ -40,7 +46,7 @@ services:
     ports:
       - '9870:9870'
     env_file:
-      - ./src/hadoop.env
+      - src/cold/hadoop.env
     volumes:
       - namenode-volume:/hadoop/dfs/name
 
@@ -59,14 +65,14 @@ services:
     volumes:
       - datanode-volume:/hadoop/dfs/data
     env_file:
-      - ./src/hadoop.env
+      - src/cold/hadoop.env
     depends_on:
       - namenode
 
   resource-manager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
     env_file:
-      - ./src/hadoop.env
+      - src/cold/hadoop.env
     depends_on:
       - namenode
       - datanode
@@ -74,7 +80,7 @@ services:
   nodemanager:
     image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
     env_file:
-      - ./src/hadoop.env
+      - src/cold/hadoop.env
     depends_on:
       - namenode
       - datanode
@@ -85,7 +91,7 @@ services:
     volumes:
       - history-server-volume:/hadoop/yarn/timeline
     env_file:
-      - ./src/hadoop.env
+      - src/cold/hadoop.env
     depends_on:
       - namenode
       - datanode
@@ -94,7 +100,7 @@ services:
   hive:
     image: bde2020/hive:2.3.2-postgresql-metastore
     env_file:
-      - ./src/hive.env
+      - src/cold/hive.env
     ports:
       - '10000:10000'
       - '10002:10002'
@@ -105,7 +111,7 @@ services:
     ports:
       - "9083:9083"
     env_file:
-      - ./src/hive.env
+      - src/cold/hive.env
 
   hive-metastore-postgresql:
     image: 'bde2020/hive-metastore-postgresql:2.3.0'
