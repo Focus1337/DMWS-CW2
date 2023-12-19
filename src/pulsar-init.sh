@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-HOST="${PULSAR_HOST:-http://broker:8080}"
+HOST="${PULSAR_HOST:-http://localhost:8080}"
 
 echo "Использую хост $HOST"
 
@@ -34,23 +34,22 @@ echo "Топики созданы"
 # Создаем коннекторы для каждого топика
 for topic in product-view sorting cart-add cart-remove review-view coupon-use category-view
 do
-  TABLE_NAME=${topic%%-*}s
+  TABLE_NAME="$(echo $topic | tr - _)s"
   TOPIC=$topic
-  echo "configs:
-    roots: "localhost:9042"
-    keyspace: "pulsar_test_keyspace"
-    columnFamily: "pulsar_test_table"
-    keyname: "key"
-    columnName: "col"" > /tmp/connector.yaml
-  echo $TABLE_NAME
+  echo "tenant: 'public'
+namespace: 'default'
+name: 'clickhouse-$TOPIC'
+inputs: [ 'persistent://public/default/$TOPIC' ]
+sinkType: 'jdbc-clickhouse'
+configs:
+    jdbcUrl: 'jdbc:clickhouse://clickhouse:8123/default'
+    tableName: '$TABLE_NAME'
+    useTransactions: 'false'" > /tmp/connector.yaml
+
   echo "Создаю коннектор для $TOPIC"
   /pulsar/bin/pulsar-admin --admin-url "$HOST" sinks create \
-    --tenant public \
-    --namespace default \
-    --name cassandra-$TOPIC \
-    --sink-type cassandra \
-    --sink-config-file /tmp/connector.yaml \
-    --inputs $TOPIC
+      --sink-config-file "/tmp/connector.yaml" \
+      --parallelism 1
 done
 
 # Удаляем созданный конфиг файл
