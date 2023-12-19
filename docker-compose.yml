@@ -50,16 +50,6 @@ services:
     volumes:
       - namenode-volume:/hadoop/dfs/name
 
-  batch_saver:
-    build:
-      context: src
-      dockerfile: BatchSaverDockerfile
-    environment:
-      MAX_FILE_SIZE: '1024'  # 1Кб для тестов
-      HDFS_URL: 'http://namenode:9870'
-    volumes:
-      - batch_saver_files-volume:/tmp
-
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     volumes:
@@ -121,4 +111,3 @@ volumes:
   namenode-volume: {}
   datanode-volume: {}
   history-server-volume: {}
-  batch_saver_files-volume: {}

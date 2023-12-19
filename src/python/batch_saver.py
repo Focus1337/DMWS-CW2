@@ -16,11 +16,11 @@ logging.basicConfig(level=logging.DEBUG)
 root_logger = logging.getLogger()
 
 try:
-    hdfs_url = os.environ['HDFS_URL']
+    hdfs_url = 'http://localhost:9870'
     root_logger.info('Устанавливаю адрес HDFS: %s', hdfs_url)
 except KeyError:
     root_logger.info('Адрес HDFS не установлен в переменных окружения. Выставляю по умолчанию')
-    hdfs_url = 'http://namenode:9870'
+    hdfs_url = 'http://localhost:9870'
 
 hdfs_client = InsecureClient(hdfs_url)
 # Чтобы одновременно несколько потоков не могли выполнить запрос
@@ -28,7 +28,7 @@ hdfs_client_lock = Lock()
 
 
 try:
-    max_file_size_bytes = int(os.environ['MAX_FILE_SIZE'])
+    max_file_size_bytes = 1024
 except KeyError:
     root_logger.info('Максимальный размер файла не передан. Выставляю в 1 Мб')
     max_file_size_bytes = 1024 * 1024  # 1Мб
@@ -61,7 +61,7 @@ def run_consumer(record_type: Type[BaseRecord], client: pulsar.Client):
 
 
 def main():
-    service_url = os.environ.get('PULSAR_URL', 'pulsar://pulsar:6650')
+    service_url = "pulsar://localhost:6650"
     root_logger.info('Создаю клиента для адреса %s', service_url)
     with create_client(service_url) as client:
         root_logger.debug('Создаю потоки консьюмеров')
