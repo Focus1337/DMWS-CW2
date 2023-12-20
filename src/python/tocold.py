@@ -1,6 +1,7 @@
 from clickhouse_driver import Client
 from minio import Minio
 from io import BytesIO
+import time
 
 # Подключение к ClickHouse
 clickhouse_client = Client('localhost', port=9000, secure=False)
@@ -16,11 +17,10 @@ def insert_data_to_s3(table_name, bucket_name):
     query = f'SELECT * FROM {table_name}'
     data = clickhouse_client.execute(query)
 
-    # Преобразование данных в формат, подходящий для записи в S3
-    # В данном примере предполагается, что данные представлены в виде строк CSV
+    # Преобразование данных в формат, подходящий для записи в S3/MinIO
     formatted_data = '\n'.join([','.join(map(str, row)) for row in data])
 
-    # Загрузка данных в S3
+    # Загрузка данных в S3/MinIO
     object_key = f'{table_name}.csv'
 
     minio_client.put_object(
@@ -33,7 +33,17 @@ def insert_data_to_s3(table_name, bucket_name):
 
     print(f"Данные из таблицы {table_name} успешно загружены в бакет {bucket_name}")
 
+# Список таблиц для экспорта
+tables_to_export = [
+    'cart_adds', 'cart_removes', 'category_views',
+    'coupon_uses', 'product_views', 'review_views', 'sortings'
+]
+
 # Пример использования:
-table_name_to_export = 'product_views'
 s3_bucket_name = 'dwms'
-insert_data_to_s3(table_name_to_export, s3_bucket_name)
+
+while True:
+    for table_name_to_export in tables_to_export:
+        insert_data_to_s3(table_name_to_export, s3_bucket_name)
+
+    time.sleep(10)  # Задержка перед следующей итерацией в 10 секунд
